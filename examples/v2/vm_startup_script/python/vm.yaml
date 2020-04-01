@@ -20,7 +20,8 @@ resources:
 - name: my-vm
   type: vm_template.py
   properties:
-    zone: ZONE_TO_RUN
+    zone: us-central1-a
+    natIP: xx.xxx.xxx.xx  
     startup-script: |
       #!/bin/bash
       python -m SimpleHTTPServer 8080

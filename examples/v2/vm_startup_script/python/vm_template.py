@@ -33,7 +33,7 @@ def GenerateConfig(context):
 
   name_prefix = context.env['deployment'] + '-' + context.env['name']
 
-  instance = {
+  instance_properties = {
       'zone': context.properties['zone'],
       'machineType': ZonalComputeUrl(
           context.env['project'], context.properties['zone'], 'machineTypes',
@@ -58,7 +58,7 @@ def GenerateConfig(context):
           }],
       'networkInterfaces': [{
           'accessConfigs': [{
-              'name': 'external-nat',
+              'name': 'External NAT',
               'type': 'ONE_TO_ONE_NAT'
               }],
           'network': GlobalComputeUrl(
@@ -66,13 +66,49 @@ def GenerateConfig(context):
           }]
       }
 
+  instance = {
+          'name': name_prefix ,
+          'type': 'compute.v1.instance',
+          'properties': instance_properties
+          }
+      
+  resources= [
+    {
+      'name': 'removeAccessConfig',
+      'action': 'gcp-types/compute-beta:compute.instances.deleteAccessConfig',
+      'metadata': {
+          'runtimePolicy': ['UPDATE_ALWAYS'],
+
+      },
+      'properties': {
+          'instance': '$(ref.{}.name)'.format(name_prefix),
+          'networkInterface' : '$(ref.{}.networkInterfaces[0].name)'.format(name_prefix),
+          'zone': context.properties['zone'],
+          'accessConfig': 'External NAT'
+         }
+      }
+,
+           {
+      'name': 'addaccessConfig',
+      'action': 'gcp-types/compute-beta:compute.instances.addAccessConfig',
+      'metadata': {
+          'runtimePolicy': ['UPDATE_ALWAYS'],
+          'dependsOn': [ 'removeAccessConfig' ]
+      },
+      'properties': {
+          'instance': '$(ref.{}.name)'.format(name_prefix),
+          'networkInterface' : '$(ref.{}.networkInterfaces[0].name)'.format(name_prefix),
+          'zone': context.properties['zone'],
+          'name': 'External NAT',
+          'type': 'ONE_TO_ONE_NAT',
+          'natIP': context.properties['natIP'] #new natIP
+   }
+      }
+    ] 
+  resources.append(instance)
   # Resources to return.
   resources = {
-      'resources': [{
-          'name': name_prefix + '-vm',
-          'type': 'compute.v1.instance',
-          'properties': instance
-          }]
+      'resources': resources
       }
 
   return resources
